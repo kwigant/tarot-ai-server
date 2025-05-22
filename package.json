@@ -1,0 +1,21 @@
+{
+  "name": "tarot-ai-server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "13": "^0.0.0",
+    "@tensorflow/tfjs-node": "^4.22.0",
+    "express": "^5.1.0",
+    "jimp": "^0.2.27",
+    "multer": "^2.0.0",
+    "node-fetch": "^3.3.2"
+  }
+}
