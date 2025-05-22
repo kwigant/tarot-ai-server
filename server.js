@@ -61,7 +61,8 @@ async function classifyImage(imagePath) {
     label: labels[idx],
     confidence: score,
   }));
-
+  tensor.dispose()
+  
   // Sort by confidence descending
   labeledPredictions.sort((a, b) => b.confidence - a.confidence);
 
