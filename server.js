@@ -34,6 +34,7 @@ let model;
 async function classifyImage(imagePath) {
   // read image
   const image = await Jimp.read(imagePath);
+  image.resize(224, 224);
 
   const buffer = await new Promise((resolve, reject) => {
     image.getBuffer(Jimp.MIME_JPEG, (err, buf) => {
@@ -45,7 +46,6 @@ async function classifyImage(imagePath) {
   // create image tensor
   const tensor = tf.node
     .decodeImage(buffer)
-    .resizeNearestNeighbor([224, 224]) // Match the input size to model
     .toFloat()
     .div(tf.scalar(255.0))
     .expandDims(0);
@@ -62,7 +62,7 @@ async function classifyImage(imagePath) {
     confidence: score,
   }));
   tensor.dispose()
-  
+  prediction.dispose?.()
   // Sort by confidence descending
   labeledPredictions.sort((a, b) => b.confidence - a.confidence);
 
@@ -70,7 +70,8 @@ async function classifyImage(imagePath) {
 }
 
 // Configure multer for image upload
-const upload = multer({ dest: "uploads/" });
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // GET Test endpoint
 app.get("/predict", (req, res) => {
@@ -85,26 +86,15 @@ app.post("/predict", upload.single("image"), async (req, res) => {
   console.log("File received:", req.file);
 
   try {
-    const result = await classifyImage(req.file.path);
+    const result = await classifyImage(req.file.buffer);
     if (result) {
       console.log("got result", result);
-      // Clean up uploaded file
-      fs.unlinkSync(req.file.path);
-
       res.json({ prediction: result });
     }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Error processing image" });
   }
-});
-
-app.post("/upload-test", upload.single("image"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
-  console.log("Image upload successful:", req.file);
-  res.status(200).json({ message: "Image received", file: req.file });
 });
 
 // Run Server
