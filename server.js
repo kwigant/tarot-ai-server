@@ -68,6 +68,7 @@ app.post("/predict", upload.single("image"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No image uploaded" });
   }
+  console.log('File received:', req.file);
 
   try {
     const result = await classifyImage(req.file.path);
@@ -83,6 +84,14 @@ app.post("/predict", upload.single("image"), async (req, res) => {
     res.status(500).json({ error: "Error processing image" });
   }
 });
+
+app.post("/upload-test", upload.single("image"), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+    console.log("Image upload successful:", req.file);
+    res.status(200).json({ message: "Image received", file: req.file });
+  });
 
 
 // Run Server
