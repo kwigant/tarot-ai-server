@@ -8,8 +8,11 @@ const multer = require("multer");
 const fs = require("fs");
 
 const labels = ["The Fool", "The Magician", "The Chariot"];
-
-// processes image and sends to the tarot AI model for predictions
+/**
+ * Process images and send to the tarot AI model for predictions
+ * @param {*} imagePath - path of the image that is being uploaded to the tarot card model
+ * @returns labeled predictions array sorted from most likely to least likely tarot card that matches the image
+ */
 async function classifyImage(imagePath) {
   // connect model
   const model = await tf.loadLayersModel(modeljson);
@@ -51,6 +54,11 @@ async function classifyImage(imagePath) {
 // Configure multer for image upload
 const upload = multer({ dest: "uploads/" });
 
+// GET Test endpoint
+app.get("/predict", (req, res) => {
+  res.json({ message: "Hello from the backend!" });
+});
+
 // POST endpoint to accept image
 app.post("/predict", upload.single("image"), async (req, res) => {
   if (!req.file) {
@@ -70,6 +78,8 @@ app.post("/predict", upload.single("image"), async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+
+// Run Server
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
