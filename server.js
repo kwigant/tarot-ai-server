@@ -5,7 +5,15 @@ const app = express();
 const PORT = 3000;
 const modeljson = "file://./model/model.json";
 const multer = require("multer");
-const fs = require("fs");
+
+/**
+ * This file configures the TarotAI server
+ * 
+ * This server has one main endpoint /predict which allows users
+ * to upload an image of a tarot card and calls a tensorflow AI 
+ * model to get the most likely tarot card title associated with 
+ * the given image
+ */
 
 const labels = [
   "The Fool",
@@ -14,28 +22,29 @@ const labels = [
   "Temperence",
   "The Hierophant",
 ];
-/**
- * Process images and send to the tarot AI model for predictions
- * @param {*} imagePath - path of the image that is being uploaded to the tarot card model
- * @returns labeled predictions array sorted from most likely to least likely tarot card that matches the image
- */
-
 let model;
 
+/* Initialize tensorFlow model */
 (async () => {
   try {
     model = await tf.loadLayersModel(modeljson);
-    console.log("✅ Model loaded successfully");
+    console.log("Success: Model loaded successfully");
   } catch (e) {
-    console.error("❌ Failed to load model", e);
+    console.error("Error: Failed to load model", e);
   }
 })();
 
-async function classifyImage(imagePath) {
-  // read image
-  const image = await Jimp.read(imagePath);
+/**
+ * Image Processing and Classification Function
+ * @param {*} imageBuffer the uploaded image's request file buffer 
+ * @returns 
+ */
+async function classifyImage(imageBuffer) {
+  /* Read image */
+  const image = await Jimp.read(imageBuffer);
   image.resize(224, 224);
 
+  /* Create image buffer */
   const buffer = await new Promise((resolve, reject) => {
     image.getBuffer(Jimp.MIME_JPEG, (err, buf) => {
       if (err) reject(err);
@@ -43,7 +52,7 @@ async function classifyImage(imagePath) {
     });
   });
 
-  // create image tensor
+  /* Create image tensor */
   const tensor = tf.node
     .decodeImage(buffer)
     .toFloat()
@@ -52,52 +61,55 @@ async function classifyImage(imagePath) {
 
   if (!tensor) return "Error: unable to create image tensor";
 
-  // // Make prediction
+  /* Make prediction */
   const prediction = model.predict(tensor);
-
   const result = await prediction.data();
-  // Map prediction scores to labels
+
+  /* Map prediction scores to labels */
   const labeledPredictions = Array.from(result).map((score, idx) => ({
     label: labels[idx],
     confidence: score,
   }));
+
+  /* Dispose of tensor and prediction to fix mem leaks */
   tensor.dispose()
   prediction.dispose?.()
-  // Sort by confidence descending
+
+  /* Sort by confidence descending */
   labeledPredictions.sort((a, b) => b.confidence - a.confidence);
 
   return labeledPredictions;
 }
 
-// Configure multer for image upload
+/* Configure multer for image upload */
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// GET Test endpoint
-app.get("/predict", (req, res) => {
-  res.json({ message: "Hello from the backend!" });
+/**
+ * GET -- test endpoint
+ */
+app.get("/predict", (res) => {
+  res.json({ message: "Hello from the Tarot AI Backend!" });
 });
 
-// POST endpoint to accept image
+/**
+ * POST -- endpoint to accept image
+ */
 app.post("/predict", upload.single("image"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No image uploaded" });
   }
-  console.log("File received:", req.file);
-
   try {
     const result = await classifyImage(req.file.buffer);
     if (result) {
-      console.log("got result", result);
       res.json({ prediction: result });
     }
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Error processing image" });
   }
 });
 
-// Run Server
+/* Run Server */
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Tarot AI Server Running on Port ${PORT}`);
 });
