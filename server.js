@@ -7,7 +7,7 @@ const modeljson = "file://./model/model.json";
 const multer = require("multer");
 const fs = require("fs");
 
-const labels = ["The Fool", "The Magician", "The Chariot"];
+const labels = ["The Fool", "The Magician", "The Chariot", "Temperence", "The Hierophant"];
 /**
  * Process images and send to the tarot AI model for predictions
  * @param {*} imagePath - path of the image that is being uploaded to the tarot card model
@@ -16,9 +16,10 @@ const labels = ["The Fool", "The Magician", "The Chariot"];
 async function classifyImage(imagePath) {
   // connect model
   const model = await tf.loadLayersModel(modeljson);
-
+  if (!model) return 'Error: no tensorflow model detected'
   // format image
   const image = await Jimp.read(imagePath);
+  if (!image) return 'Error: unable to read image'
 
   const buffer = await new Promise((resolve, reject) => {
     image.getBuffer(Jimp.MIME_JPEG, (err, buf) => {
@@ -26,6 +27,7 @@ async function classifyImage(imagePath) {
       else resolve(buf);
     });
   });
+  if (!buffer) return 'Error: unable to create image buffer'
 
   // create image tensor
   const tensor = tf.node
@@ -35,10 +37,12 @@ async function classifyImage(imagePath) {
     .div(tf.scalar(255.0))
     .expandDims(0);
 
+  if (!tensor) return 'Error: unable to create image tensor'
+
   // // Make prediction
   const prediction = model.predict(tensor);
   const result = await prediction.data();
-
+  if (!result) return 'Error: unable to make prediction with the given image'
   // Map prediction scores to labels
   const labeledPredictions = Array.from(result).map((score, idx) => ({
     label: labels[idx],
@@ -67,11 +71,13 @@ app.post("/predict", upload.single("image"), async (req, res) => {
 
   try {
     const result = await classifyImage(req.file.path);
-
-    // Clean up uploaded file
-    fs.unlinkSync(req.file.path);
-
-    res.json({ prediction: result });
+    if (result) {
+        console.log('got result', result)
+        // Clean up uploaded file
+        fs.unlinkSync(req.file.path);
+    
+        res.json({ prediction: result });
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Error processing image" });
