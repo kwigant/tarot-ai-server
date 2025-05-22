@@ -14,20 +14,39 @@ const labels = ["The Fool", "The Magician", "The Chariot", "Temperence", "The Hi
  * @returns labeled predictions array sorted from most likely to least likely tarot card that matches the image
  */
 async function classifyImage(imagePath) {
+  // Variables
+  let model = null
+  let image = null
+  let buffer = null
+  let result = null
   // connect model
-  const model = await tf.loadLayersModel(modeljson);
-  if (!model) return 'Error: no tensorflow model detected'
-  // format image
-  const image = await Jimp.read(imagePath);
-  if (!image) return 'Error: unable to read image'
+  try {
+    model = await tf.loadLayersModel(modeljson);
+  } catch (e) {
+    console.error("Failed to load model:", e);
+    return 'Error: model load failure';
+  }
 
-  const buffer = await new Promise((resolve, reject) => {
-    image.getBuffer(Jimp.MIME_JPEG, (err, buf) => {
-      if (err) reject(err);
-      else resolve(buf);
-    });
-  });
-  if (!buffer) return 'Error: unable to create image buffer'
+  // read image
+  try {
+    image = await Jimp.read(imagePath);
+  } catch (e) {
+    console.error("Failed to load image:", e);
+    return 'Error: image load failure';
+  }
+ 
+  try {
+    buffer = await new Promise((resolve, reject) => {
+        image.getBuffer(Jimp.MIME_JPEG, (err, buf) => {
+          if (err) reject(err);
+          else resolve(buf);
+        });
+      });
+  }
+  catch (e) {
+    console.error("Failed to load buffer:", e);
+    return 'Error: buffer load failure';
+  }
 
   // create image tensor
   const tensor = tf.node
@@ -41,18 +60,25 @@ async function classifyImage(imagePath) {
 
   // // Make prediction
   const prediction = model.predict(tensor);
-  const result = await prediction.data();
-  if (!result) return 'Error: unable to make prediction with the given image'
-  // Map prediction scores to labels
-  const labeledPredictions = Array.from(result).map((score, idx) => ({
-    label: labels[idx],
-    confidence: score,
-  }));
+  
+  try {
+    result = await prediction.data();
+    // Map prediction scores to labels
+    const labeledPredictions = Array.from(result).map((score, idx) => ({
+        label: labels[idx],
+        confidence: score,
+    }));
 
-  // Sort by confidence descending
-  labeledPredictions.sort((a, b) => b.confidence - a.confidence);
+    // Sort by confidence descending
+    labeledPredictions.sort((a, b) => b.confidence - a.confidence);
 
-  return labeledPredictions;
+    return labeledPredictions;
+  }
+  catch (e) {
+    console.error("Failed to get result:", e);
+    return 'Error: prediction load failure';
+  }
+ 
 }
 
 // Configure multer for image upload
