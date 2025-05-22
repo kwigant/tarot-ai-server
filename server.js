@@ -13,19 +13,24 @@ const labels = ["The Fool", "The Magician", "The Chariot", "Temperence", "The Hi
  * @param {*} imagePath - path of the image that is being uploaded to the tarot card model
  * @returns labeled predictions array sorted from most likely to least likely tarot card that matches the image
  */
+
+let model;
+
+(async () => {
+  try {
+    model = await tf.loadLayersModel(modeljson);
+    console.log("✅ Model loaded successfully");
+  } catch (e) {
+    console.error("❌ Failed to load model", e);
+  }
+})();
+
 async function classifyImage(imagePath) {
   // Variables
-  let model = null
   let image = null
   let buffer = null
   let result = null
   // connect model
-  try {
-    model = await tf.loadLayersModel(modeljson);
-  } catch (e) {
-    console.error("Failed to load model:", e);
-    return 'Error: model load failure';
-  }
 
   // read image
   try {
